@@ -17,8 +17,7 @@ def propCrtbp(mu, s0, tspan, **kwargs):
     Parameters
     ----------
     mu : scalar
-        mu = mu1 = m1 / (m1 + m2), 
-        where m1 and m2 - masses of two main bodies, m1 > m2.
+        CRTBP mu1 coefficient.
 
     s0 : array_like with 6 components
         Initial spacecraft state vector (x0,y0,z0,vx0,vy0,vz0).
@@ -33,7 +32,7 @@ def propCrtbp(mu, s0, tspan, **kwargs):
         Solout function for integrator.
         
     int_param : dict
-        Parameters fo 'dopri5' integrator.
+        Parameters for 'dopri5' integrator.
         
     Returns
     -------
@@ -45,12 +44,8 @@ def propCrtbp(mu, s0, tspan, **kwargs):
     See Also
     --------
     
-    scipy.integrate.ode : Powerfull integrator
-    crtbp_ode.crtbp
-    
-    .. math::
-        t_1
-    
+    scipy.integrate.ode, crtbp_ode.crtbp
+       
     '''
     prop = scipy.integrate.ode(crtbp)
     prop.set_initial_value(s0, tspan[0])
@@ -68,17 +63,44 @@ def propCrtbp(mu, s0, tspan, **kwargs):
     prop.integrate(tspan[1])
     return np.asarray(lst)
 
-# prop2Planes
-# propagates spacecraft in CRTBP described by 'mu' coeff
-# until it crosses ('flies by') any of planes:
-#   x == planes[0] (event0)
-#   x == planes[1] (event1)
-#   |y| == planes[2] (event2)
-# returns:
-#   0 if event1 or event2 occur
-#   1 otherwise
 
 def prop2Planes(mu, s0, planes, **kwargs):
+    ''' Propagate spacecraft in CRTBP up to defined terminal planes.
+        Uses scipy.integrate.ode with 'dopri5' integrator.
+    
+    Parameters
+    ----------
+    mu : scalar
+        CRTBP mu1 coefficient.
+
+    s0 : array_like with 6 components
+        Initial spacecraft state vector (x0,y0,z0,vx0,vy0,vz0).
+        
+    planes : array_like with 3 components
+        planes[0] defines terminal plane x == planes[0],
+        planes[1] defines terminal plane x == planes[1],
+        planes[2] defines 2 terminal planes
+            |y| == planes[2].
+         
+    Optional
+    --------
+    
+    **kwargs : dict
+        Parameters for 'dopri5' integrator.
+        
+    Returns
+    -------
+    
+    0 : if spacecraft crosses plane[0]
+    1 : otherwise
+    
+    See Also
+    --------
+    
+    scipy.integrate.ode, crtbp_ode.crtbp
+       
+    '''
+
     def _stopPlanes(t, s, planes=planes):
         if ((s[0] < planes[0]) or (s[0] > planes[1]) or (math.fabs(s[1]) > planes[2])):
             return -1
@@ -93,24 +115,71 @@ def prop2Planes(mu, s0, planes, **kwargs):
         return 1
     return 0
 
-
 from find_vel import findVPlanes
 
-# propNRevsPlanes
-# propagates spacecraft in CRTBP described by 'mu' coeff
-# propagates by N revolutions of bounded motion
-#
-# s0 - initial state vector
-# beta - correction angle (in XY plane)
-# planes - boundaries (see prop2Planes)
-# N - number of revolutions
-# dT - period between velocity correction
-#       (default: pi, i.e. about one physical revolution)
-# dv0 - initial step size
-# retDV:
-#   if True then additionally return array with all correction dV vectors
 
 def propNRevsPlanes(mu, s0, beta, planes, N=10, dT=np.pi, dv0=0.05, retDV=False, **kwargs):
+    ''' Propagate spacecraft in CRTBP for N revolutions near libration point.
+        Every dT period calculates velocity correction vector at beta angle
+        (findVPlanes) for bounded motion. Initial beta = 90 degrees and
+        initial velocity correction vector is velocity itself. 
+        Uses propCrtbp, findVPlanes.
+    
+    Parameters
+    ----------
+    mu : scalar
+        mu = mu1 = m1 / (m1 + m2), 
+        where m1 and m2 - masses of two main bodies, m1 > m2.
+
+    s0 : array_like with 6 components
+        Initial spacecraft state vector (x0,y0,z0,vx0,vy0,vz0).
+        
+    beta : angle at which corrections will be made.
+        
+    planes : array_like with 3 components
+        planes[0] defines terminal plane x == planes[0],
+        planes[1] defines terminal plane x == planes[1],
+        planes[2] defines 2 terminal planes
+            |y| == planes[2].
+            
+    N : scalar
+        Number of revolutions.
+
+    dT : scalar
+        Time between velocity corrections.
+        (default: pi, i.e. about one spacecraft revolution)
+
+    dv0 : scalar
+        Initial step for correction calculation.
+
+    retDV : boolean
+        If True then additionally returns array with all
+        correction dV vectors.    
+         
+    Optional
+    --------
+    
+    **kwargs : dict
+        Parameters for propCrtbp and findVPlanes.
+        
+    Returns
+    -------
+    
+    arr : np.array
+      Array of (n,6) shape of state vectors and times
+      for each integrator step (xi,yi,zi,vxi,vyi,vzi,ti)
+    
+    DV : np.array
+        Array of (N,) shape with correction values.
+        (only if retDV is True)
+    
+    See Also
+    --------
+    
+    propCrtbp, findVPlanes
+       
+    '''
+
     v = findVPlanes(mu, s0, 90, planes, dv0, **kwargs)
     s1 = s0.copy()
     s1[3:5] += v

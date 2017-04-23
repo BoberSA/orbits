@@ -9,19 +9,48 @@ import math
 import numpy as np
 from crtbp_prop import prop2Planes
 
-# findVPlanes
-# uses special version of bisection method and plane boundaries to calculate
-# velocity correction vector for spacecraft bounded motion
-# near unstable lagrange points in CRTBP described by 'mu' coeff;
-#
-# s0 - initial state vector
-# beta - correction angle (in XY plane)
-# planes - boundaries (see prop2Planes)
-# dv0 - initial step size
-#
-# returns dV = [dVx, dVy] - velocity correction vector
-
 def findVPlanes(mu, s0, beta, planes, dv0, **kwargs):
+    ''' Calculate velocity correction vector in XY plane that corresponds to \
+        bounded motion around libration point in CRTBP.
+        Uses modified bisection algorithm; prop2Planes.
+    
+    Parameters
+    ----------
+    mu : scalar
+        CRTBP mu1 coefficient.
+
+    s0 : array_like with 6 components
+        Initial spacecraft state vector (x0,y0,z0,vx0,vy0,vz0).
+        
+    beta : scalar
+        Angle at which correction value will be found.
+        
+    planes : array_like with 3 components
+        See prop2Planes function.
+            
+    dv0 : scalar
+        Initial step for correction value calculation.
+
+        
+    Optional
+    --------
+    
+    **kwargs : dict
+        Parameters for prop2Planes function.
+        
+    Returns
+    -------
+    
+    v : np.array
+      Array of (2,) shape - velocity correction vector
+      in XY plane (dvx,dvy)
+    
+    See Also
+    --------
+    
+    prop2Planes
+       
+    '''
     s1 = np.asarray(s0).copy()
     vstart = s1[3:5].copy()
     dv = dv0
